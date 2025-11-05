@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>菊水楼 屋内マップ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .direction-arrow {
+      width: 24px; height: 24px;
+      background: red;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script>
+    // --- 部屋情報（日本語固定） ---
+    const rooms = [
+ { name: "玄関", coords: [1000, 1020], desc: "ようこそ菊水楼へ。玄関横に貼られている逆さ向きの札には石川五右衛門の命日が書かれており、これは泥棒除けとされています。" },
+	　{ name: "下広間",coords: [830, 950], desc:"鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る「結」という巻物が飾られています。"},
+          { name: "オリエンタルルーム", coords: [700, 300], desc: "宴会・披露宴に使用されます。中華風の照明や銅鑼、ビリヤード台など様々な文化が混合している内装が特徴的です。" },
+          { name: "春日の間",coords: [550, 1575],  desc: "この部屋の中央部西側の壁にある柱は明治維新後の廃仏毀釈運動の時に寺から引き取ったものです。" }      
+];
+
+    let map, roomMarkers = [], userMarker, arrowEl;
+    const w = 2000, h = 1200;
+    const bounds = [[0,0],[h,w]];
+
+    window.onload = () => {
+      // --- Leaflet初期化 ---
+      map = L.map('map', { crs: L.CRS.Simple, minZoom: -1 });
+
+      // マップ画像を背景に
+      L.imageOverlay('kikusui_map.png', bounds).addTo(map);
+
+      // 画面サイズに合わせて全体表示
+      map.fitBounds(bounds);
+      window.addEventListener('resize', () => map.fitBounds(bounds));
+
+      // ユーザーマーカー（方位矢印）
+      userMarker = L.marker(rooms[0].coords, {
+        icon: L.divIcon({ className: 'direction-arrow', iconSize: [24, 24] })
+      }).addTo(map);
+      arrowEl = userMarker.getElement();
+
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener("deviceorientationabsolute", updateHeading, true);
+        window.addEventListener("deviceorientation", updateHeading, true);
+      }
+
+      // 部屋マーカー追加（クリックでポップアップ）
+      rooms.forEach(r => {
+        const marker = L.marker(r.coords).addTo(map)
+          .bindPopup(`<b>${r.name}</b><br>${r.desc}`);
+        roomMarkers.push(marker);
+      });
+    };
+
+    function updateHeading(e) {
+      let heading;
+      if (e.webkitCompassHeading) heading = e.webkitCompassHeading;
+      else if (e.alpha != null) heading = 360 - e.alpha;
+      if (arrowEl) arrowEl.style.transform = `rotate(${heading}deg)`;
+    }
+  </script>
+</body>
+</html>
