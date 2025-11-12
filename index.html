@@ -2,14 +2,14 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>菊水楼 屋内マップ</title>
+  <title>Kikusuiro Indoor Map / 菊水楼 屋内マップ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-  <!-- Leaflet 読み込み -->
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Swiper（画像スライダー） -->
+  <!-- Swiper -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 
@@ -19,25 +19,31 @@
       padding: 0;
       height: 100%;
       font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
-      background-color: #f8f8f8;
     }
 
-    #map {
-      height: 100vh;
-      width: 100%;
+    #map { height: 100vh; width: 100%; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 9999;
+      transition: all 0.2s;
+    }
+    .lang-toggle:hover {
+      background: #f0f0f0;
     }
 
-    /* === ポップアップ === */
     .popup-content {
       max-width: 300px;
       font-size: 15px;
       line-height: 1.5;
-    }
-
-    .popup-content h3 {
-      margin-top: 0;
-      font-size: 17px;
-      color: #333;
     }
 
     .swiper {
@@ -52,11 +58,6 @@
       object-fit: cover;
       border-radius: 8px;
       cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .swiper-slide img:hover {
-      transform: scale(1.02);
     }
 
     .img-hint {
@@ -66,14 +67,12 @@
       margin-bottom: 6px;
     }
 
-    /* === 拡大モーダル === */
     #modal {
       display: none;
       position: fixed;
       z-index: 9999;
       left: 0; top: 0;
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       background: rgba(0, 0, 0, 0.85);
       justify-content: center;
       align-items: center;
@@ -83,126 +82,138 @@
       max-width: 90%;
       max-height: 90%;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
 
-    /* === スマホ最適化 === */
     @media (max-width: 600px) {
-      .popup-content {
-        max-width: 90vw;
-        font-size: 14px;
-      }
-      .swiper {
-        width: 85vw;
-        height: 55vw;
-      }
-      .img-hint {
-        font-size: 12px;
-      }
+      .popup-content { max-width: 90vw; font-size: 14px; }
+      .swiper { width: 85vw; height: 55vw; }
+      .img-hint { font-size: 12px; }
+      .lang-toggle { font-size: 13px; padding: 5px 10px; }
     }
   </style>
 </head>
 
 <body>
   <div id="map"></div>
+  <button class="lang-toggle" id="langToggle">EN / 日本語</button>
 
-  <!-- 拡大画像モーダル -->
   <div id="modal" onclick="this.style.display='none'">
     <img src="" alt="">
   </div>
 
   <script>
-    // === 地図初期化 ===
-    const map = L.map('map', {
-      crs: L.CRS.Simple,
-      minZoom: -1,
-      maxZoom: 2,
-      tap: true,
+    // ===== 言語設定 =====
+    let lang = (navigator.language || navigator.userLanguage).startsWith('ja') ? 'ja' : 'en';
+
+    const langButton = document.getElementById("langToggle");
+    langButton.addEventListener("click", () => {
+      lang = lang === "ja" ? "en" : "ja";
+      alert(lang === "ja" ? "日本語モードに切り替えました。" : "Switched to English mode.");
+      map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+      addMarkers();
     });
 
-    const mapWidth = 2000;
-    const mapHeight = 1500;
+    // ===== 地図設定 =====
+    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -1, maxZoom: 2 });
+    const mapWidth = 2000, mapHeight = 1500;
     const bounds = [[0, 0], [mapHeight, mapWidth]];
-
     L.imageOverlay('kikusui_map.png', bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // === 部屋データ ===
+    // ===== 部屋データ =====
     const rooms = [
       {
-        name: "玄関",
+        name: { ja: "玄関", en: "Entrance" },
         coords: [1150, 1010],
-        desc: "ようこそ菊水楼へ。玄関横に貼られている逆さ向きの札には石川五右衛門の命日が書かれており、これは泥棒除けとされています。",
+        desc: {
+          ja: "ようこそ菊水楼へ。玄関横に貼られている逆さ向きの札には石川五右衛門の命日が書かれており、これは泥棒除けとされています。",
+          en: "Welcome to Kikusuiro. The upside-down plaque near the entrance bears the death date of Ishikawa Goemon, a famous thief, believed to ward off burglars."
+        },
         img: ["IMG_0377.jpeg"]
       },
       {
-        name: "下広間",
+        name: { ja: "下広間", en: "Lower Hall" },
         coords: [1050, 950],
-        desc: "鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る「結」という巻物が飾られています。",
+        desc: {
+          ja: "鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る「結」という巻物が飾られています。",
+          en: "This room features a deer sculpture and calligraphy on the front wall. On the east shelf, you can see 'Yui', scrolls created by couples married at Kikusuiro."
+        },
         img: ["IMG_0378.jpeg", "IMG_0379.jpeg", "IMG_0376.jpeg", "IMG_0380.jpeg"]
       },
       {
-        name: "オリエンタルルーム",
+        name: { ja: "オリエンタルルーム", en: "Oriental Room" },
         coords: [850, 300],
-        desc: "宴会・披露宴に使用されます。中華風の照明や銅鑼、ビリヤード台など様々な文化が混合している内装が特徴的です。",
+        desc: {
+          ja: "宴会・披露宴に使用されます。中華風の照明や銅鑼、ビリヤード台など様々な文化が混合している内装が特徴的です。",
+          en: "Used for banquets and receptions. Its décor mixes cultures with Chinese-style lamps, a gong, and a billiard table."
+        },
         img: ["IMG_0382.jpeg"]
       },
       {
-        name: "春日の間",
+        name: { ja: "春日の間", en: "Kasuga Room" },
         coords: [700, 1575],
-        desc: "この部屋の中央部西側の壁にある柱は明治維新後の廃仏毀釈運動の時に寺から引き取ったものです。",
+        desc: {
+          ja: "この部屋の中央部西側の壁にある柱は明治維新後の廃仏毀釈運動の時に寺から引き取ったものです。",
+          en: "The pillar on the west wall was brought from a temple during the anti-Buddhist movement after the Meiji Restoration."
+        },
         img: ["IMG_0381.jpeg"]
       }
     ];
 
-    // === モーダル関数 ===
+    // ===== モーダル表示 =====
     function openModal(src) {
-      const modal = document.getElementById("modal");
-      modal.style.display = "flex";
-      modal.querySelector("img").src = src;
+      const modal = document.getElementById('modal');
+      modal.style.display = 'flex';
+      modal.querySelector('img').src = src;
     }
 
-    // === ピン追加 ===
-    rooms.forEach((room, i) => {
-      const marker = L.marker(room.coords).addTo(map);
-
-      marker.on("click", () => {
-        const popupContent = `
-          <div class="popup-content">
-            <h3>${room.name}</h3>
-            <div class="swiper swiper${i}">
-              <div class="swiper-wrapper">
-                ${room.img.map(src => `
-                  <div class="swiper-slide">
-                    <img src="${src}" alt="${room.name}" onclick="openModal('${src}')">
-                  </div>`).join("")}
+    // ===== ピン設置関数 =====
+    function addMarkers() {
+      rooms.forEach((room, i) => {
+        const marker = L.marker(room.coords).addTo(map);
+        marker.on('click', () => {
+          const popupContent = `
+            <div class="popup-content">
+              <h3>${room.name[lang]}</h3>
+              <div class="swiper swiper${i}">
+                <div class="swiper-wrapper">
+                  ${room.img.map(src => `
+                    <div class="swiper-slide">
+                      <img src="${src}" alt="${room.name[lang]}" onclick="openModal('${src}')">
+                    </div>`).join('')}
+                </div>
+                <div class="swiper-pagination"></div>
+                <div class="swiper-button-prev"></div>
+                <div class="swiper-button-next"></div>
               </div>
-              <div class="swiper-pagination"></div>
-              <div class="swiper-button-prev"></div>
-              <div class="swiper-button-next"></div>
+              <div class="img-hint">📷 ${
+                lang === 'ja'
+                  ? '画像をクリックすると拡大表示されます'
+                  : 'Tap an image to enlarge'
+              }</div>
+              <p>${room.desc[lang]}</p>
             </div>
-            <div class="img-hint">画像をクリックすると拡大表示されます</div>
-            <p>${room.desc}</p>
-          </div>
-        `;
+          `;
+          marker.bindPopup(popupContent).openPopup();
 
-        marker.bindPopup(popupContent).openPopup();
-
-        // Swiper初期化（既存を安全に破棄して再生成）
-        setTimeout(() => {
-          document.querySelectorAll(".swiper").forEach(sw => {
-            if (sw.swiper) sw.swiper.destroy(true, true);
-          });
-          new Swiper(`.swiper${i}`, {
-            pagination: { el: `.swiper${i} .swiper-pagination`, clickable: true },
-            navigation: {
-              nextEl: `.swiper${i} .swiper-button-next`,
-              prevEl: `.swiper${i} .swiper-button-prev`
-            },
-          });
-        }, 120);
+          setTimeout(() => {
+            document.querySelectorAll(".swiper").forEach(sw => {
+              if (sw.swiper) sw.swiper.destroy(true, true);
+            });
+            new Swiper(`.swiper${i}`, {
+              pagination: { el: `.swiper${i} .swiper-pagination`, clickable: true },
+              navigation: {
+                nextEl: `.swiper${i} .swiper-button-next`,
+                prevEl: `.swiper${i} .swiper-button-prev`
+              }
+            });
+          }, 100);
+        });
       });
-    });
+    }
+
+    // 初回ロード時に追加
+    addMarkers();
   </script>
 </body>
 </html>
