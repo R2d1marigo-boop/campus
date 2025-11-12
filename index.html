@@ -1,61 +1,89 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>菊水楼 屋内マップ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet 読み込み -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- 画像スライダー用 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .leaflet-popup-content {
-      font-size: 14px;
-      line-height: 1.4;
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
     }
-    .room-img {
-      width: 180px;
-      border-radius: 8px;
-      margin-top: 6px;
+    #map {
+      height: 100vh;
+      width: 100%;
     }
-    /* --- スライダー部分のスタイル --- */
-    .slider {
-      position: relative;
-      width: 180px;
-      height: 120px;
-      overflow: hidden;
-      border-radius: 8px;
-      margin-top: 6px;
+
+    /* Leafletポップアップ内のレイアウト */
+    .popup-content {
+      max-width: 260px;
     }
-    .slides {
-      display: flex;
-      transition: transform 0.5s ease;
+    .swiper {
+      width: 240px;
+      height: 180px;
+      margin-bottom: 8px;
     }
-    .slides img {
-      width: 180px;
-      height: 120px;
+    .swiper-slide img {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-    }
-    .prev, .next {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(0,0,0,0.4);
-      color: white;
-      border: none;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 3px;
     }
-    .prev { left: 4px; }
-    .next { right: 4px; }
+
+    /* 拡大用モーダル */
+    #modal {
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0; top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+    }
+    #modal img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 8px;
+    }
   </style>
 </head>
+
 <body>
   <div id="map"></div>
 
+  <!-- 拡大画像モーダル -->
+  <div id="modal" onclick="this.style.display='none'">
+    <img src="" alt="">
+  </div>
+
   <script>
-    // --- 部屋情報 ---
+    // === 地図初期化 ===
+    const map = L.map('map', {
+      crs: L.CRS.Simple,
+      minZoom: -1,
+      maxZoom: 2
+    });
+
+    // === 画像を背景に設定 ===
+    const mapWidth = 2000;  // 画像の実際のサイズに合わせて調整
+    const mapHeight = 1500;
+    const bounds = [[0, 0], [mapHeight, mapWidth]];
+    L.imageOverlay('kikusui_map.png', bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    // === 各部屋データ ===
     const rooms = [
       {
         name: "玄関",
@@ -67,7 +95,7 @@
         name: "下広間",
         coords: [830, 950],
         desc: "鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る「結」という巻物が飾られています。",
-        img: ["IMG_0378.jpeg", "IMG_0379.jpeg", "IMG_0376.jpeg","IMG_0380"]
+        img: ["IMG_0378.jpeg", "IMG_0379.jpeg", "IMG_0376.jpeg", "IMG_0380.jpeg", "IMG_0383.png"]
       },
       {
         name: "オリエンタルルーム",
@@ -83,63 +111,45 @@
       }
     ];
 
-    const w = 2000, h = 1200;
-    const bounds = [[0,0],[h,w]];
-
-    // --- マップ初期化 ---
-    const map = L.map('map', {
-      crs: L.CRS.Simple,
-      minZoom: -1,
-      zoomSnap: 0.1
-    });
-
-    // 背景画像（屋内マップ）
-    L.imageOverlay('kikusui_map.png', bounds).addTo(map);
-    map.fitBounds(bounds);
-    window.addEventListener('resize', () => map.fitBounds(bounds));
-
-    // --- マーカー生成 ---
-    rooms.forEach((r, index) => {
-      let popupContent = `<b>${r.name}</b><br>${r.desc}<br>`;
-
-      // 画像が複数ならスライダーにする
-      if (r.img.length > 1) {
-        const sliderId = `slider-${index}`;
-        popupContent += `
-          <div class="slider" id="${sliderId}">
-            <div class="slides">
-              ${r.img.map(src => `<img src="${src}" alt="${r.name}">`).join("")}
+    // === ピン追加 ===
+    rooms.forEach((room, i) => {
+      const marker = L.marker(room.coords).addTo(map);
+      marker.on('click', () => {
+        const popupContent = `
+          <div class="popup-content">
+            <h3>${room.name}</h3>
+            <div class="swiper swiper${i}">
+              <div class="swiper-wrapper">
+                ${room.img.map(src => `
+                  <div class="swiper-slide">
+                    <img src="${src}" alt="${room.name}" onclick="openModal('${src}')">
+                  </div>`).join("")}
+              </div>
+              <div class="swiper-pagination"></div>
+              <div class="swiper-button-prev"></div>
+              <div class="swiper-button-next"></div>
             </div>
-            <button class="prev">‹</button>
-            <button class="next">›</button>
+            <p>${room.desc}</p>
           </div>
         `;
-      } else {
-        popupContent += `<img src="${r.img[0]}" alt="${r.name}" class="room-img">`;
-      }
+        marker.bindPopup(popupContent).openPopup();
 
-      const marker = L.marker(r.coords).addTo(map).bindPopup(popupContent);
-
-      // スライダー動作を追加
-      marker.on('popupopen', () => {
-        if (r.img.length > 1) {
-          const popup = document.querySelector(`#slider-${index}`);
-          const slides = popup.querySelector('.slides');
-          const prev = popup.querySelector('.prev');
-          const next = popup.querySelector('.next');
-          let current = 0;
-
-          prev.onclick = () => {
-            current = (current - 1 + r.img.length) % r.img.length;
-            slides.style.transform = `translateX(-${180 * current}px)`;
-          };
-          next.onclick = () => {
-            current = (current + 1) % r.img.length;
-            slides.style.transform = `translateX(-${180 * current}px)`;
-          };
-        }
+        // Swiperを再初期化
+        setTimeout(() => {
+          new Swiper(`.swiper${i}`, {
+            pagination: { el: '.swiper-pagination', clickable: true },
+            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+          });
+        }, 100);
       });
     });
+
+    // === モーダル表示関数 ===
+    function openModal(src) {
+      const modal = document.getElementById('modal');
+      modal.style.display = 'flex';
+      modal.querySelector('img').src = src;
+    }
   </script>
 </body>
 </html>
