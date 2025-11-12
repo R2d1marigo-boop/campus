@@ -32,7 +32,7 @@
     .swiper {
       width: 240px;
       height: 180px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .swiper-slide img {
       width: 100%;
@@ -43,7 +43,15 @@
       transition: 0.2s;
     }
     .swiper-slide img:hover {
-      opacity: 0.8;
+      opacity: 0.85;
+    }
+
+    /* クリック説明文 */
+    .img-hint {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+      text-align: center;
     }
 
     /* モーダル（拡大表示） */
@@ -135,6 +143,7 @@
             <div class="swiper-button-prev"></div>
             <div class="swiper-button-next"></div>
           </div>
+          <div class="img-hint">📷 画像をクリックすると拡大表示されます</div>
           <p>${room.desc}</p>
         </div>
       `;
