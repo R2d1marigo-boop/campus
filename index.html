@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- 画像スライダー用 -->
+  <!-- Swiper（画像スライダー用） -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 
@@ -23,10 +23,12 @@
       width: 100%;
     }
 
-    /* Leafletポップアップ内のレイアウト */
+    /* ポップアップ全体 */
     .popup-content {
       max-width: 260px;
     }
+
+    /* スライダー */
     .swiper {
       width: 240px;
       height: 180px;
@@ -38,17 +40,22 @@
       object-fit: cover;
       border-radius: 6px;
       cursor: pointer;
+      transition: 0.2s;
+    }
+    .swiper-slide img:hover {
+      opacity: 0.8;
     }
 
-    /* 拡大用モーダル */
+    /* モーダル（拡大表示） */
     #modal {
       display: none;
       position: fixed;
       z-index: 10000;
-      left: 0; top: 0;
+      left: 0;
+      top: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       justify-content: center;
       align-items: center;
     }
@@ -56,6 +63,7 @@
       max-width: 90%;
       max-height: 90%;
       border-radius: 8px;
+      box-shadow: 0 0 15px rgba(255,255,255,0.2);
     }
   </style>
 </head>
@@ -76,9 +84,9 @@
       maxZoom: 2
     });
 
-    // === 画像を背景に設定 ===
-    const mapWidth = 2000;  // 画像の実際のサイズに合わせて調整
-    const mapHeight = 1500;
+    // === 背景画像（屋内マップ） ===
+    const mapWidth = 2000;  // 画像のピクセル幅
+    const mapHeight = 1500; // 画像のピクセル高さ
     const bounds = [[0, 0], [mapHeight, mapWidth]];
     L.imageOverlay('kikusui_map.png', bounds).addTo(map);
     map.fitBounds(bounds);
@@ -111,40 +119,38 @@
       }
     ];
 
-    // === ピン追加 ===
+    // === ピン設置 ===
     rooms.forEach((room, i) => {
-      const marker = L.marker(room.coords).addTo(map);
-      marker.on('click', () => {
-        const popupContent = `
-          <div class="popup-content">
-            <h3>${room.name}</h3>
-            <div class="swiper swiper${i}">
-              <div class="swiper-wrapper">
-                ${room.img.map(src => `
-                  <div class="swiper-slide">
-                    <img src="${src}" alt="${room.name}" onclick="openModal('${src}')">
-                  </div>`).join("")}
-              </div>
-              <div class="swiper-pagination"></div>
-              <div class="swiper-button-prev"></div>
-              <div class="swiper-button-next"></div>
+      const popupContent = `
+        <div class="popup-content">
+          <h3>${room.name}</h3>
+          <div class="swiper swiper${i}">
+            <div class="swiper-wrapper">
+              ${room.img.map(src => `
+                <div class="swiper-slide">
+                  <img src="${src}" alt="${room.name}" onclick="openModal('${src}')">
+                </div>`).join("")}
             </div>
-            <p>${room.desc}</p>
+            <div class="swiper-pagination"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
           </div>
-        `;
-        marker.bindPopup(popupContent).openPopup();
+          <p>${room.desc}</p>
+        </div>
+      `;
 
-        // Swiperを再初期化
-        setTimeout(() => {
-          new Swiper(`.swiper${i}`, {
-            pagination: { el: '.swiper-pagination', clickable: true },
-            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
-          });
-        }, 100);
+      const marker = L.marker(room.coords).addTo(map).bindPopup(popupContent);
+
+      // ポップアップが開いたタイミングでSwiperを初期化
+      marker.on('popupopen', () => {
+        new Swiper(`.swiper${i}`, {
+          pagination: { el: '.swiper-pagination', clickable: true },
+          navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+        });
       });
     });
 
-    // === モーダル表示関数 ===
+    // === モーダルを開く関数 ===
     function openModal(src) {
       const modal = document.getElementById('modal');
       modal.style.display = 'flex';
