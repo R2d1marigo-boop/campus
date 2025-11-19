@@ -2,62 +2,38 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>菊水楼 屋内マップ（多言語対応）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-
-  <!-- Leaflet -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>菊水楼 屋内マップ</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Swiper -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 
   <style>
-    html,body { height:100%; margin:0; font-family:"Hiragino Sans","Noto Sans JP",sans-serif; }
-    #map { width:100%; height:100vh; }
+    body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; }
+    #map { height: 100vh; width: 100%; }
 
-    /* 言語切替ボタン */
-    .lang-toggle {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 10001;
-      background: rgba(255,255,255,0.95);
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 14px;
-      cursor: pointer;
+    .popup-content { max-width: 260px; }
+    .swiper { width: 240px; height: 180px; margin-bottom: 8px; }
+    .swiper-slide img {
+      width: 100%; height: 100%; object-fit: cover;
+      border-radius: 6px; cursor: pointer;
     }
 
-    /* ポップアップ */
-    .popup-content { max-width: 320px; font-size:15px; line-height:1.5; }
-    .popup-content h3 { margin:0 0 6px 0; font-size:17px; color:#222; }
-
-    /* Swiper */
-    .swiper { width: 260px; height: 180px; margin-bottom: 6px; }
-    .swiper-slide img { width:100%; height:100%; object-fit:cover; border-radius:8px; cursor:pointer; }
-    .img-hint { font-size:13px; color:#666; text-align:center; margin-bottom:6px; }
-
-    /* モーダル */
     #modal {
-      display:none;
-      position:fixed;
-      z-index:10002;
-      left:0; top:0;
-      width:100%; height:100%;
-      background:rgba(0,0,0,0.85);
-      justify-content:center; align-items:center;
+      display: none; position: fixed; z-index: 10000;
+      left: 0; top: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center; align-items: center;
     }
-    #modal img { max-width:90%; max-height:90%; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.4); }
+    #modal img { max-width: 90%; max-height: 90%; border-radius: 8px; }
 
-    /* スマホ最適化 */
-    @media (max-width:600px) {
-      .popup-content { max-width:90vw; font-size:14px; }
-      .swiper { width:85vw; height:55vw; }
-      .lang-toggle { font-size:13px; padding:5px 8px; }
-      .img-hint { font-size:12px; }
+    #langToggle {
+      position: fixed; top: 10px; right: 10px;
+      z-index: 9999; padding: 8px 12px;
+      border-radius: 8px; border: 1px solid #ccc;
+      background: white; cursor: pointer;
     }
   </style>
 </head>
@@ -65,26 +41,27 @@
   <div id="map"></div>
 
   <!-- 言語切替ボタン -->
-  <button id="langToggle" class="lang-toggle" title="Toggle language">EN / 日本語</button>
+  <button id="langToggle">EN / 日本語</button>
 
-  <!-- 拡大モーダル -->
+  <!-- 画像拡大モーダル -->
   <div id="modal" onclick="this.style.display='none'">
-    <img src="" alt="expanded image">
+    <img src="" alt="" />
   </div>
 
   <script>
-    // ---- 言語初期値（ブラウザ判定） ----
-    let lang = (navigator.language || navigator.userLanguage).startsWith('ja') ? 'ja' : 'en';
+    // ---------------- 言語判定 ----------------
+    let lang = navigator.language.startsWith("en") ? "en" : "ja";
 
-    // ---- マップ初期化 ----
-    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -1, maxZoom: 2, tap: true });
-    const mapWidth = 2000;   // 背景画像の幅(px) — 必要に応じて調整
-    const mapHeight = 1500;  // 背景画像の高さ(px)
-    const bounds = [[0, 0], [mapHeight, mapWidth]];
+    // ---------------- 地図設定 ----------------
+    const mapWidth = 2000;
+    const mapHeight = 1500;
+    const bounds = [[0,0],[mapHeight,mapWidth]];
+
+    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -1, maxZoom: 2 });
     L.imageOverlay('kikusui_map.png', bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // ---- 多言語データ（ユーザー指定の文言を反映） ----
+    // ---------------- 部屋データ ----------------
     const rooms = [
       {
         name: { ja: "玄関", en: "Entrance" },
@@ -99,7 +76,7 @@
         name: { ja: "下広間", en: "Lower Hall" },
         coords: [1050, 950],
         desc: {
-          ja: "鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る「結」という巻物が飾られています。",
+          ja: "鹿の彫刻や正面の壁に飾られている書道が特徴的です。東側の棚には菊水楼で結婚式を挙げた方々が作る『結』という巻物が飾られています。",
           en: "This room features a deer sculpture and calligraphy on the front wall. On the east shelf, you can see 'Yui', scrolls created by couples married at Kikusuiro."
         },
         img: ["IMG_0378.jpeg", "IMG_0379.jpeg", "IMG_0376.jpeg", "IMG_0380.jpeg"]
@@ -124,107 +101,89 @@
       }
     ];
 
-    // ---- マーカー管理 ----
-    let markers = [];
-
-    // ---- モーダルを開く ----
+    // ---------------- モーダル ----------------
     function openModal(src) {
       const modal = document.getElementById('modal');
       modal.style.display = 'flex';
       modal.querySelector('img').src = src;
     }
 
-    // ---- マーカー（ポップアップ）生成関数：安定版 ----
+    // ---------------- トースト通知 ----------------
+    const toast = document.createElement('div');
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.background = 'rgba(0,0,0,0.75)';
+    toast.style.color = 'white';
+    toast.style.padding = '10px 18px';
+    toast.style.borderRadius = '8px';
+    toast.style.fontSize = '14px';
+    toast.style.display = 'none';
+    toast.style.zIndex = '20000';
+    document.body.appendChild(toast);
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 1800);
+    }
+
+    // ---------------- ピン描画 ----------------
+    let markers = [];
+
     function refreshMarkers() {
-      // 既存マーカー削除
       markers.forEach(m => map.removeLayer(m));
       markers = [];
 
       rooms.forEach((room, i) => {
-        const marker = L.marker(room.coords);
-        marker.addTo(map);
+        const marker = L.marker(room.coords).addTo(map);
         markers.push(marker);
 
-        // まず空のポップアップをバインドしておく（再現性確保）
-        marker.bindPopup('', { maxWidth: 420 });
-
-        // クリックで内容を setPopupContent → openPopup（Swiper 安全再生成）
         marker.on('click', () => {
-          const popupHTML = `
+          const popupContent = `
             <div class="popup-content">
               <h3>${room.name[lang]}</h3>
+
               <div class="swiper swiper${i}">
                 <div class="swiper-wrapper">
                   ${room.img.map(src => `
                     <div class="swiper-slide">
-                      <img src="${src}" alt="${room.name[lang]}" onclick="openModal('${src}')">
+                      <img src="${src}" onclick="openModal('${src}')">
                     </div>`).join('')}
                 </div>
                 <div class="swiper-pagination"></div>
                 <div class="swiper-button-prev"></div>
                 <div class="swiper-button-next"></div>
               </div>
-              <div class="img-hint">📷 ${lang === 'ja' ? '画像をクリックすると拡大表示されます' : 'Tap an image to enlarge'}</div>
+
               <p>${room.desc[lang]}</p>
+              <p style="font-size:12px; opacity:0.7;">${lang === 'ja' ? '※画像をクリックすると拡大できます' : 'Click an image to enlarge'}</p>
             </div>
           `;
 
-          // 内容を差し替えて開く（bindPopup を繰り返さない）
-          marker.setPopupContent(popupHTML);
-          marker.openPopup();
+          marker.bindPopup(popupContent).openPopup();
 
-          // Swiper の残骸を安全に破棄してから再生成（2回目以降の問題を回避）
           setTimeout(() => {
-            // そのスライダー要素だけを探して destroy
-            document.querySelectorAll(`.swiper${i}`).forEach(el => {
-              if (el.swiper) {
-                try { el.swiper.destroy(true, true); } catch(e) { /* ignore */ }
-              }
-            });
-
-            // 新しく初期化（スコープされたセレクタを使う）
             new Swiper(`.swiper${i}`, {
-              pagination: { el: `.swiper${i} .swiper-pagination`, clickable: true },
-              navigation: {
-                nextEl: `.swiper${i} .swiper-button-next`,
-                prevEl: `.swiper${i} .swiper-button-prev`
-              },
+              pagination: { el: '.swiper-pagination', clickable: true },
+              navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
             });
           }, 120);
         });
       });
     }
 
-    // 初回マーカー生成
     refreshMarkers();
 
-    // ---- 言語切替ボタン処理（自動検出＋手動切替） ----
-    const langBtn = document.getElementById('langToggle');
-    langBtn.addEventListener('click', () => {
+    // ---------------- 言語切替 ----------------
+    document.getElementById('langToggle').addEventListener('click', () => {
       lang = (lang === 'ja') ? 'en' : 'ja';
-      // (既に開いているポップアップを閉じる)
       map.closePopup();
-      // マーカーを再描画（各ポップアップの表示言語を更新）
       refreshMarkers();
-      // 簡易フィードバック
-      if (lang === 'ja') {
-        langBtn.textContent = 'EN / 日本語';
-      } else {
-        langBtn.textContent = 'EN / 日本語';
-      }
+      showToast(lang === 'ja' ? '日本語表示に切り替えました' : 'Switched to English');
     });
 
-    // （オプション）キーボードでの言語切替（Lキー）
-    document.addEventListener('keydown', e => {
-      if (e.key === 'l' || e.key === 'L') {
-        langBtn.click();
-      }
-    });
-
-    // ---- (任意) ウィンドウリサイズで地図を再フィット ----
-    window.addEventListener('resize', () => {
-      map.fitBounds(bounds);
-    });
   </script>
 </body>
 </html>
